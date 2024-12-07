@@ -20,6 +20,7 @@ def fetch_data(token):
     data = response.json()
     df = pd.DataFrame(data)
     df["Date"] = pd.to_datetime(df["Date"])
+    df['Expense'] = df['amount']
     df.set_index("Date", inplace=True)
     df = df.groupby(df.index).sum()
     return df
