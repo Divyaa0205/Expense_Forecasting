@@ -3,10 +3,8 @@ import pickle
 import pandas as pd
 from statsmodels.tsa.statespace.sarimax import SARIMAX
 import requests
-from flask_cors import CORS
 
 app = Flask(__name__)
-CORS(app)
 
 def load_model():
     try:
@@ -15,12 +13,11 @@ def load_model():
     except FileNotFoundError:
         return None
 
-def fetch_data():
+def fetch_data(token):
     url = "https://your-api-url/transaction/list"
-    headers = {'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY3NTFlY2JjY2JiMWU2NGMwMDEyMzFhYyIsImVtYWlsIjoiZGl2eWFuc2gyMzE2OTAxNEBha2dlYy5hYy5pbiIsImlhdCI6MTczMzU0ODE1MywiZXhwIjoxNzY1MTA1NzUzfQ.LbqbcColEee3wui_YZ1CLf3GqbtIVVZrNC_OQ-WqE6g'}
+    headers = {'Authorization': f'Bearer {token}'}
     response = requests.get(url, headers=headers)
     data = response.json()
-    
     df = pd.DataFrame(data)
     df["Date"] = pd.to_datetime(df["Date"])
     df.set_index("Date", inplace=True)
@@ -31,7 +28,7 @@ def retrain_model(new_data):
     historical_data = pd.read_csv("expenses.csv")
     df = pd.concat([historical_data, new_data])
     df = df.drop_duplicates()
-    sarimax_model = SARIMAX(df['Expense'], order=(1, 1, 1), seasonal_order=(1, 1, 1, 12))
+    sarimax_model = SARIMAX(df['Expense'], order=(0, 0, 1), seasonal_order=(0, 1, 1, 12))
     sarimax_fitted = sarimax_model.fit(disp=False)
     with open("model_SARIMAX_fit.pkl", "wb") as model_file:
         pickle.dump(sarimax_fitted, model_file)
@@ -41,22 +38,38 @@ def retrain_model(new_data):
 @app.route("/forecast", methods=["POST"])
 def forecast():
     try:
-        new_data = fetch_data()
+        request_data = request.get_json()
+        token = request_data.get("token")
+        
+        if not token:
+            return jsonify({"error": "Token is required"}), 400
+        
+        new_data = fetch_data(token)
+        
+        if new_data.empty:
+            return jsonify({"error": "No data found"}), 404
+        
         model = load_model()
         if model is None:
             model = retrain_model(new_data)
         else:
             model = retrain_model(new_data)
+        
         next_day_forecast = model.forecast(steps=1).tolist()
         next_week_forecast = model.forecast(steps=7).tolist()
         next_month_forecast = model.forecast(steps=30).tolist()
+        
+        next_month_sum = sum(next_month_forecast)
+        
         return jsonify({
             "next_day_forecast": next_day_forecast,
             "next_week_forecast": next_week_forecast,
-            "next_month_forecast": next_month_forecast
+            "next_month_forecast": next_month_sum
         })
+    
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
     app.run(debug=True)
+
