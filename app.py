@@ -66,9 +66,11 @@ def forecast():
         next_month_forecast = model.forecast(steps=30).tolist()
 
         next_month_sum = sum(next_month_forecast)
+        next_week_sum = sum(next_week_forecast)
 
         return jsonify({
             "next_day_forecast": next_day_forecast,
+            "next_week_forecast_sum":next_week_sum,
             "next_week_forecast": next_week_forecast,
             "next_month_forecast": next_month_sum
         })
