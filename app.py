@@ -65,15 +65,33 @@ def forecast():
         next_week_forecast = model.forecast(steps=7).tolist()
         next_month_forecast = model.forecast(steps=30).tolist()
 
-        next_month_sum = sum(next_month_forecast)
+        week1_forecast = next_month_forecast[:7]
+        week2_forecast = next_month_forecast[7:14]
+        week3_forecast = next_month_forecast[14:21]
+        week4_forecast = next_month_forecast[21:28]
+        week4_forecast += next_month_forecast[28:]
+
+        week1_sum = sum(week1_forecast)
+        week2_sum = sum(week2_forecast)
+        week3_sum = sum(week3_forecast)
+        week4_sum = sum(week4_forecast)
+
+        next_month_sum = week1_sum + week2_sum + week3_sum + week4_sum
         next_week_sum = sum(next_week_forecast)
 
         return jsonify({
             "next_day_forecast": next_day_forecast,
-            "next_week_forecast_sum":next_week_sum,
             "next_week_forecast": next_week_forecast,
-            "next_month_forecast": next_month_sum
+            "next_week_forecast_sum": next_week_sum,
+            "next_month_forecast_sum": next_month_sum,
+            "weekly_breakdown": {
+                "week1": {"forecast": week1_forecast, "sum": week1_sum},
+                "week2": {"forecast": week2_forecast, "sum": week2_sum},
+                "week3": {"forecast": week3_forecast, "sum": week3_sum},
+                "week4": {"forecast": week4_forecast, "sum": week4_sum}
+            }
         })
+
     
     except Exception as e:
         return jsonify({"error": str(e)}), 500
